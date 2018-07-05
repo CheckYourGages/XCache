@@ -1,0 +1,19 @@
+# Instance to label use case of XCache deployment
+# Generates app name as "xcache-[Instance]"
+# Enables unique instances of XCache in one namespace
+Instance: global
+
+Service:
+  # Port that the service will utilize.
+  Port: 1094
+  # External IP that may access the service
+  ExternalIP: 192.170.227.231
+
+XCacheConfig:
+  # The amount of memory XCache is allowed to use (in GB)
+  CacheMem: 1
+  # The amount of disk space XCache is allowed to use (in GB)
+  CacheSize: 10
+  # The name of the secret that was created for your XCache certificate
+  # This must be created BEFORE deploying XCache
+  CertSecret: xcache-cert-secret

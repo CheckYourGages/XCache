@@ -1,0 +1,89 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  name: {{ template "xcache.fullname" . }}
+  labels:
+    app: {{ template "xcache.name" . }}
+    chart: {{ template "xcache.chart" . }}
+    release: {{ .Release.Name }}
+    instance: {{ .Values.Instance }}
+spec:
+
+  nodeSelector:
+    storage: "local"
+
+  volumes:
+  - name: x509-data
+    emptyDir: {}
+  - name: x509-certs-volume
+    secret:
+      secretName: {{ .Values.XCacheConfig.CertSecret }}
+      items:
+      - key: userkey
+        path: userkey.pem
+        mode: 256 
+      - key: usercert
+        path: usercert.pem
+  - name: xcache-data
+    persistentVolumeClaim:
+      claimName: {{ template "xcache.fullname" . }}-pvc
+
+  containers:
+  - name: xcache
+    image: slateci/xcache:latest
+    env:
+    - name: XC_SPACE_HIGH_WM
+      value: "0.95"
+    - name: XC_SPACE_LOW_WM
+      value: "0.80"
+    - name: XC_PORT
+      value: "{{ .Values.Service.Port }}"
+    - name: XC_RAMSIZE
+      value: "{{ .Values.XCacheConfig.CacheMem }}g"
+    - name: XC_BLOCKSIZE
+      value: "1M"
+    - name: XC_PREFETCH
+      value: "0"
+    volumeMounts:
+    - name: x509-data
+      mountPath: "/etc/grid-security/"
+      readOnly: false
+    - name: x509-certs-volume
+      mountPath: "/etc/grid-certs/"
+      readOnly: true
+    - name: xcache-data
+      mountPath: "/cache"
+      readOnly: false
+    livenessProbe:
+      tcpSocket:
+        port: {{ .Values.Service.Port }}
+      initialDelaySeconds: 180
+      periodSeconds: 60
+    ports:
+      - containerPort: {{ .Values.Service.Port }}
+
+  - name: x509
+    image: slateci/xcache:latest
+    command: ["/run_x509_updater.sh"]
+    volumeMounts:
+    - name: x509-data
+      mountPath: "/etc/grid-security/"
+      readOnly: false
+    - name: x509-certs-volume
+      mountPath: "/etc/grid-certs/"
+      readOnly: true
+
+  - name: reporter
+    image: slateci/xcache:latest
+    command: ["/run_cache_reporter.sh"]
+    env:
+    - name: XC_SITE
+      value: "MWT2"
+    - name: XC_REPORT_COLLECTOR
+      value: "http://uct2-collectd.mwt2.org:8080"
+    volumeMounts:
+    - name: xcache-data
+      mountPath: "/cache"
+      readOnly: true
+      
+  restartPolicy: Never

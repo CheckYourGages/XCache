@@ -1,0 +1,21 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ template "xcache.fullname" . }}-service
+spec:
+  type: NodePort
+  selector:
+    app: {{ template "xcache.name" . }}
+    chart: {{ template "xcache.chart" . }}
+    release: {{ .Release.Name }}
+    instance: {{ .Values.Instance }}
+  ports:
+  - protocol: TCP
+    name: xrootd
+    port: {{ .Values.Service.Port }}
+    targetPort: {{ .Values.Service.Port }}
+    nodePort: 31094
+  externalIPs:
+  - {{ .Values.Service.ExternalIP }}
+
+---
